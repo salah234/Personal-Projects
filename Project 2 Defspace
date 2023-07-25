@@ -1,0 +1,203 @@
+import pygame, sys
+from pygame.locals import *
+
+pygame.init()
+clock = pygame.time.Clock()
+
+SCREENWIDTH = 800
+SCREENHEIGHT = 600
+screen = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
+pygame.display.set_caption("Defspace")
+pic = pygame.image.load('japan-minimal-art-4k.jpg')
+endgame = 0
+gameon = False
+
+
+scarlet = (212,0,0)
+rows = 5
+cols = 8
+brick_blue = (0,0,255)
+brick_green = (69,75,27)
+brick_violet = (56.1,0,100)
+black = (0,0,0)
+paddle_clr = (210, 180, 140)
+paddle_bor = (255,255,242)
+ball_clr = (0,0,0)
+ball_bor = (95, 0, 127)
+instructcolor = (144,238,144)
+instructfont = pygame.font.SysFont('Constantia', 24)
+
+def outputText(text, font, color, x, y):
+    img = font.render(text, True, color)
+    screen.blit(img,(x,y))
+
+
+
+
+class Wall():
+    def __init__(self):
+        self.width = SCREENWIDTH // cols
+        self.height = 50
+        self.left = (SCREENWIDTH - cols * self.width) // 2
+        self.right = 100
+        self.top = 50
+    def createWall(self):
+        self.brick = []
+        brickind = []
+        for i in range(rows):
+            brick_row = []
+            for j in range(cols):
+                brick_x = self.left + j * self.width
+                brick_y = self.top + i * self.height
+                rect = pygame.Rect(brick_x, brick_y, self.width, self.height)
+                if i < 1:
+                    strength = 5
+                    brick_col = brick_violet
+                elif i < 3:
+                    strength = 3
+                    brick_col = brick_blue
+                else:
+                    strength = 1
+                    brick_col = brick_green
+                brickind = [rect, strength, brick_col]
+                brick_row.append(brickind)
+            self.brick.append(brick_row)
+    def drawWall(self):
+        for i in self.brick:
+            for j in i:
+                brick_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+                pygame.draw.rect(brick_surface, j[2], brick_surface.get_rect())  
+                border_color = (0, 0, 0, 100)  
+                pygame.draw.rect(brick_surface, border_color, brick_surface.get_rect(), 2)
+                screen.blit(brick_surface, j[0])
+class Paddle():
+    def __init__(self):
+        Paddle.ResetPaddle(self)
+    def Movement(self):
+        self.dir = 0
+        key = pygame.key.get_pressed()
+        if key[pygame.K_LEFT] and self.rect.left > 0:
+            self.rect.x -= self.splevel
+            self.dir = -1
+        if key[pygame.K_RIGHT] and self.rect.right < SCREENWIDTH:
+            self.rect.x += self.splevel
+            self.dir = 1
+    def drawPaddle(self):
+        pygame.draw.rect(screen, paddle_clr, self.rect)
+        pygame.draw.rect(screen, paddle_bor, self.rect, 2)
+    def ResetPaddle(self):
+        self.height = 20
+        self.width = int(SCREENWIDTH / cols)
+        self.x = int((SCREENWIDTH / 2) - (self.width / 2))
+        self.y = SCREENHEIGHT - (self.height * 2)
+        self.splevel = 10
+        self.rect = Rect(self.x, self.y, self.width, self.height)
+        self.dir = 0
+
+class Ball():
+    def __init__(self, x, y):
+        self.ResetBall(x,y)
+    def ballMovement(self):
+        collision_override = 5
+        brick_destroyed = 1
+        row_count = 0
+        for i in wall.brick:
+            item_count = 0
+            for j in i:
+                if self.rect.colliderect(j[0]):
+                    if abs(self.rect.bottom - j[0].top) < collision_override and self.ballspeedy > 0:
+                        self.ballspeedy *= -1
+                    if abs(self.rect.top - j[0].bottom) < collision_override and self.ballspeedy < 0:
+                        self.ballspeedy *= -1
+                    if abs(self.rect.left - j[0].right) < collision_override and self.ballspeedx < 0:
+                        self.ballspeedx *= -1
+                    if abs(self.rect.right - j[0].left) < collision_override and self.ballspeedx > 0:
+                        self.ballspeedx *= -1
+                    if wall.brick[row_count][item_count][1] > 1:
+                        wall.brick[row_count][item_count][1] -= 1
+                    else:
+                        wall.brick[row_count][item_count][0] = (0,0,0,0)
+                if wall.brick[row_count][item_count][0] != (0,0,0,0):
+                    brick_destroyed = 0
+                item_count += 1
+            row_count += 1
+        if brick_destroyed == 1:
+            self.game_over = 1
+        if self.rect.left < 0 or self.rect.right > SCREENWIDTH:
+            self.ballspeedx *= -1
+        if self.rect.bottom > SCREENHEIGHT:
+            self.game_over = -1
+        if self.rect.top < 0:
+            self.ballspeedy *= -1
+        if self.rect.colliderect(plr_paddle):
+            if abs(self.rect.bottom - plr_paddle.rect.top) < collision_override and self.ballspeedy > 0:
+                self.ballspeedy *= -1
+                self.ballspeedx += plr_paddle.dir
+                if self.ballspeedx > self.maxspeed:
+                    self.ballspeedx = self.maxspeed
+                elif self.ballspeedx < 0 and self.ballspeedx < self.maxspeed:
+                    self.ballspeedx = -self.maxspeed
+            else:
+                self.ballspeedx *= -1
+        
+        self.rect.x += self.ballspeedx
+        self.rect.y += self.ballspeedy
+
+        return self.game_over
+        
+    def drawBall(self):
+        pygame.draw.circle(screen, ball_clr, (self.rect.x + self.rad, self.rect.y + self.rad), self.rad)
+        pygame.draw.circle(screen, ball_bor, (self.rect.x + self.rad, self.rect.y + self.rad), self.rad, 2)
+    def ResetBall(self,x,y):
+        self.rad = 10
+        self.x = x - self.rad
+        self.y = y
+        self.rect = Rect(self.x, self.y, self.rad * 2, self.rad * 2)
+        self.ballspeedx = 4
+        self.ballspeedy = -4
+        self.game_over = 0
+        self.maxspeed = 5
+
+wall = Wall()
+wall.createWall()
+plr_paddle = Paddle()
+plr_ball = Ball(plr_paddle.x + (plr_paddle.width // 2), plr_paddle.y - plr_paddle.height)
+
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+            pygame.quit()
+            sys.exit()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_e] and not gameon:
+            gameon = True
+            plr_ball.ResetBall(plr_paddle.x + (plr_paddle.width // 2), plr_paddle.y - plr_paddle.height)
+            plr_paddle.ResetPaddle()
+            wall.createWall()
+    
+    screen.fill((200,200,200))
+    screen.blit(pic, (0,0))
+    wall.drawWall()
+    plr_paddle.drawPaddle()
+    plr_ball.drawBall()
+    if gameon:
+        plr_paddle.Movement()
+        endgame = plr_ball.ballMovement()
+        if endgame != 0:
+            gameon = False
+    if not gameon:
+        if endgame == 0:
+            outputText('PRESS E TO START', instructfont, instructcolor, 100, SCREENHEIGHT // 2 + 100)
+        elif endgame == 1:
+            outputText("WINNER, Wanna Play Again?", instructfont, instructcolor, 240, SCREENHEIGHT // 2)
+            outputText('PRESS E TO START', instructfont, instructcolor, 100, SCREENHEIGHT // 2 + 100)
+        elif endgame == -1:
+            outputText("You Lost, Wanna Redeem Yourself?", instructfont, instructcolor, 240, SCREENHEIGHT // 2 + 50)
+            outputText('PRESS E TO START', instructfont, instructcolor, 100, SCREENHEIGHT // 2 + 100)
+    
+    pygame.display.update()
+    clock.tick(60)
+
+    
