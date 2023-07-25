@@ -1,0 +1,184 @@
+import turtle, random, math
+
+# Implementations:
+    # Moved all messages into the turtle window so that we don’t have to look at the terminal.
+    # Added in an interesting background so that it still allows us to see the obstacles and spacecraft.
+
+class Game:
+    '''
+    Purpose: The object of this class represents the objects within the game and the game's functionality.
+    Instance variables: initialx - Random x coordinate in given range of numbers
+                        initialy - Random y coordinate in given range of numbers
+                        initialvx - Random x coordinate in given range of numbers that dictate the initial velocity in the x direction which the spacecraft is moving
+                        initalvy - Random y coordinate in given range of numbers that dictate the initial velocity in the y direction in which the spacecraft is moving
+                        self.fixed_obstacles - List of stored obstacles in the Obstacle Class
+    Methods: Constructor method __init__ - Initializes the turtle module such as the speed of the program and appearence.
+             Gameloop: Conditionals in which if executed, then game ends and a given message is shown.
+            isCollision: 
+            '''
+    def __init__(self):
+        #Bottom left corner of screen is (0, 0)
+        #Top right corner is (500, 500)
+        turtle.setworldcoordinates(0, 0, 500, 500)
+        cv = turtle.getcanvas()
+        turtle.Screen().bgpic("2124354.png")
+        cv.adjustScrolls()
+        turtle.title("Twilight Landing")
+
+        #Ensure turtle is running as fast as possible
+        turtle.delay(0)
+        initialx = random.uniform(100,400)
+        initialy = random.uniform(250,450)
+        initialvx = random.uniform(-4,4)
+        initialvy = random.uniform(-2,0)
+        self.player = SpaceCraft(initialx, initialy, initialvx, initialvy)
+        turtle.onkeypress(self.player.thrust, 'Up')
+        turtle.onkeypress(self.player.left_turn, 'Left')
+        turtle.onkeypress(self.player.right_turn, 'Right')
+        
+        self.fixed_obstacles = []
+        for i in range(8):
+            obstacles = Obstacle(random.uniform(0,250), random.uniform(250,500))
+            self.fixed_obstacles.append(obstacles)
+        
+        
+        self.gameloop()
+        
+        #These two lines must always be at the BOTTOM of __init__
+        turtle.listen()
+        turtle.mainloop()
+
+    def gameloop(self):
+        self.player.move()
+        for obstacle in self.fixed_obstacles:
+            obstacle.move_obstacle()
+            if self.isCollision(obstacle):
+                turtle.clear()
+                turtle.write("You Crashed")
+                return
+        if self.player.y < 20:
+            if (-3 <= self.player.vx <= 3) and (-3 <= self.player.vy <= 3):
+                turtle.clear()
+                turtle.write("Successful Landing")
+            else:
+                turtle.clear()
+                turtle.write("You Crashed!")
+        else:
+            turtle.ontimer(self.gameloop, 30)
+    
+    def isCollision(self, obstacle):
+        dist = math.sqrt(math.pow(self.player.x - obstacle.x, 2) + math.pow(self.player.y - obstacle.y ,2))
+        return dist < 20
+
+        
+class SpaceCraft(turtle.Turtle):
+    '''
+    Purpose: The object of this class represents the movement of the Spacecraft inherited by turtle.Turtle
+    Instance Variables: self.x - Initial x coordinate
+                        self.y - Initial y coordinate
+                        self.vx - Initial velocity x coordinate
+                        self.vy - Initial velocity y coordinate
+                        self.fuel - Initial fuel of the spacecraft that causes movement to spacecraft.
+    Methods: Constructor method __init__: Initalizes the instance variables
+             move(self): Dictates movement of the spacecraft and go to the self.x and self.y coordinates.
+             gameloop(self): calls the move(self) function and calls itself every 30 milliseconds
+             thrust(self): controls the spacecraft movement in the up direction
+             right_turn(self): controls the spacecraft movement in the right direction
+             left_turn(self): controls the spacecraft movement in the left direction 
+    '''
+    def __init__(self, start_x, start_y, startvx, startvy):
+        turtle.Turtle.__init__(self)
+        self.x = start_x
+        self.y = start_y
+        self.vx = startvx
+        self.vy = startvy
+        self.penup()
+        self.left(90)
+        self.speed(0)
+        self.goto(start_x, start_y)
+        self.turtlesize(2)
+        self.fuel = 200
+    def move(self):
+        self.vy -= 0.0486
+        self.x += self.vx
+        self.y += self.vy
+        self.goto(self.x, self.y)
+    def gameloop(self):
+        self.move()
+        turtle.ontimer(self.gameloop, 30)
+    def thrust(self):
+        if self.fuel > 0:
+            self.fuel -=1
+            angle = math.radians(self.heading())
+            self.vx += math.cos(angle) 
+            self.vy += math.sin(angle)
+            turtle.clear()
+            turtle.write(f"Number of Fuel units remaining: {self.fuel}")
+        else:
+            turtle.clear()
+            turtle.write("Out of Fuel")
+    def left_turn(self):
+        if self.fuel > 0:
+            self.fuel -= 1
+            left_angle = math.radians(0.2618)
+            self.vx -= math.cos(left_angle)
+            self.vy -= math.sin(left_angle)
+            turtle.clear()
+            turtle.write(f"Number of Fuel units remaining: {self.fuel}")
+        else:
+            turtle.clear()
+            turtle.write("Out of Fuel")
+    def right_turn(self):
+        if self.fuel > 0:
+            self.fuel -= 1
+            right_angle = math.radians(0.2618)
+            self.vx += math.cos(right_angle)
+            self.vy += math.sin(right_angle)
+            turtle.clear()
+            turtle.write(f"Number of Fuel units remaining: {self.fuel}")
+        else:
+            turtle.clear()
+            turtle.write("Out of Fuel")
+
+class Obstacle(turtle.Turtle):
+    '''
+    Purpose: The object in this class represents the creation and movement of the obstacles in the game by inheriting turtle.Turtle
+    Instance variables: self.x - Given x coordinate
+                        self.y - Given y coordinate
+                        self.shape - Shape of obstacle
+                        self.fillcolor - Color of self.shape
+                        self.vx - velocity in random x coordinates
+                        self.vy - velocity in random y coordinates
+    Methods: Constructor method __init__: Initalizes the instance variables as well as by using the inherited class turtle.Turtle to draw self.shape as the Obstacle.
+             move_obstacle(self): Controls movement and speed of obstacles as well as different conditionals if given obstacles go to a specific x and y coordinate and velocity in the x and y direction.
+    '''
+    def __init__(self, x, y):
+        turtle.Turtle.__init__(self)
+        self.x = x
+        self.y = y
+        self.shape("circle")
+        self.shapesize(2)
+        self.penup()
+        self.fillcolor("blue")
+        self.goto(x,y)
+        self.showturtle()
+        self.vx = random.uniform(-2,2)
+        self.vy = random.uniform(-2,0)
+    
+    def move_obstacle(self):
+        self.x += self.vx
+        self.y += self.vy
+        if self.x > 500:
+            self.x = -500
+        elif self.x < -500:
+            self.x = 500
+        elif self.y > 500:
+            self.y = -500
+        elif self.y < -500:
+            self.y = 500
+        
+        self.goto(self.x, self.y)
+
+
+if __name__ == '__main__':
+    Game()
